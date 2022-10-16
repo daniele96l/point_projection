@@ -17,6 +17,8 @@ import csv
 import open3d as o3d
 from scipy.stats import zscore
 import scipy.stats as stats
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 def angle(v1, v2, acute):
 # v1 is your firsr vector
@@ -89,6 +91,9 @@ def find_signal_pos(res,points_las,n,curret_frame):
         #print(frame_n)
         index = []
 
+        if(frame_n == n and W < 20):
+            print("Segnale troppo piccolo per essere affidabile")
+
         if (frame_n == n and W > 20 and H > 20):  # itero per ogni frame per ogni cartello che non sia troppo piccolo
             name = str(i[4])
             names.append(name)
@@ -111,11 +116,11 @@ def find_signal_pos(res,points_las,n,curret_frame):
                 # no_outlier = remove_outlier(no_outlier, 2)
                 position_gps = no_outlier_mean
             else:
+                print("Zero punti dentro il bounding box, imposisbile trovare la posizione")
                 no_outlier_mean = no_outlier_mean.append(pd.DataFrame(no_outlier.mean(axis=0)))
                 # no_outlier = remove_outlier(no_outlier, 2)
                 position_gps = no_outlier_mean
 
-            # print(position_gps)
 
     return position_gps,names,n
 
@@ -195,6 +200,7 @@ def clustering(point_masked,curret_frame):
         if (min < 20): #i consider points not too far
             return pd.DataFrame(array)
         else:
+            print("Segnale troppo lontano per essere affidabile")
             array[:, :] = np.NaN
             return pd.DataFrame(array)
     else:
@@ -244,9 +250,9 @@ def iterate_frames():
                 points_las_shift = points_las_shift[check]
                 points_las = points_las[check]
                     
-                fig = plt.figure()
-                ax = fig.add_subplot(111, projection='3d')
-                ax.scatter(points_las_shift[:, 0], points_las_shift[:, 1], points_las_shift[:, 2], marker='o')
+#                fig = plt.figure()
+#                ax = fig.add_subplot(111, projection='3d')
+#                ax.scatter(points_las_shift[:, 0], points_las_shift[:, 1], points_las_shift[:, 2], marker='o')
                 
                 points = np.asarray(points_las_shift)
                 res = tal.project_pointcloud_to_image(np.array(points))
