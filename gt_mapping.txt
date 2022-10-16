@@ -1,0 +1,25 @@
+50km limit
+Bike lane
+Danger pedestrian crossing
+Danger roundabout
+Danger slippery road
+Keep right
+No entry
+No parking
+No stopping
+No trucks
+Parking
+Pedestrian crossing
+Roundabout
+Stop
+Traffic light
+Welcome
+Yield
+dead end
+end bike lane
+mee
+no entry
+no entry 2
+right-left
+stop
+yield
