@@ -91,6 +91,7 @@ def find_signal_pos(res,points_las,n,curret_frame):
         W = float(i[2]) * risoluzione[0]
         H = float(i[3]) * risoluzione[1]
 
+
         frame_n = i[5]
         index = []
 
@@ -226,7 +227,7 @@ def iterate_frames():
           tmp = str("X") +"",str("Y") +"",str("Z") +"",str("Name")+"",str("Confidence") +"",str("N frame")
           writer.writerow(tmp)
           #i  make this start from about 500
-          for i in signal_list[5:]: #inizio dalla 5nta rilevazione
+          for i in signal_list[10:]: #inizio dalla 5nta rilevazione
                 frame_n = int(i[5])
                 #frame_n = 518
                 if (frame_n < 999):
@@ -291,7 +292,7 @@ def iterate_frames():
                     if(not math.isnan(float(x))):
                         print(tmp)
                         writer.writerow(tmp)
-                break
+                #break
 
     return points, res,IMG_FILE
 
@@ -301,11 +302,11 @@ if __name__ == "__main__":
    cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
    frame = cv2.imread(IMG_FILE)
     
-   for i in range(0, len(res), 1):
+'''   for i in range(0, len(res), 1):
        if points[i][1] < 0: #fatto con marzia per eliminare i punti nel cielo
            cv2.circle(frame, (int(res[i][0]), int(res[i][1])), 1, (0, 0, 255), -1)
             #print ("original 3D points: "+str(points[i])+" projected 2D points: ["+str(int(res[i][0]))+" , "+str(int(res[i][1]))+"]" )
 
    cv2.imshow("frame", frame)
    cv2.waitKey(0)
-
+'''

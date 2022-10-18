@@ -41,7 +41,7 @@ new_list5 = new_list4
 y = 0
 
 for i in new_list4:
-    print(i)
+    #print(i)
     frame = i[5].split("/")[4]
     num = frame.split("_")[2]
     # print(num)
