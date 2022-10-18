@@ -90,6 +90,15 @@ df_converted['Name'] = df_converted.index
 c = df_converted.index.get_level_values('Name')
 
 
+x_offset = 360000
+y_offset = 5100000
+
+df_offset = pd.DataFrame()
+df_offset["X"] = df_converted["X"] - x_offset
+df_offset["Y"] = df_converted["Y"] - y_offset
+df_offset["z"] = df_converted["Z"]
+df_offset["N frame"] = df_converted["N frame"]
+
 
 
 df_converted["X"],df_converted["Y"] = utm.to_latlon(df_converted["X"], df_converted["Y"], 33, 'T')

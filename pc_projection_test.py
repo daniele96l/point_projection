@@ -19,6 +19,10 @@ from scipy.stats import zscore
 import scipy.stats as stats
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
+min_distance = 30 #meters
+min_size = 20 #pixel
+max_altezza_segnale = 1
+min_altezza_segnale = -2
 
 def angle(v1, v2, acute):
 # v1 is your firsr vector
@@ -88,13 +92,12 @@ def find_signal_pos(res,points_las,n,curret_frame):
         H = float(i[3]) * risoluzione[1]
 
         frame_n = i[5]
-        #print(frame_n)
         index = []
 
-        if(frame_n == n and W < 20):
+        if(frame_n == n and W < min_size): #in pixel
             print("Segnale troppo piccolo per essere affidabile")
 
-        if (frame_n == n and W > 20 and H > 20):  # itero per ogni frame per ogni cartello che non sia troppo piccolo
+        if (frame_n == n and W > min_size and H > min_size):  # itero per ogni frame per ogni cartello che non sia troppo piccolo
             name = str(i[4])
             names.append(name)
             for j in res:
@@ -145,15 +148,13 @@ def find_las(fotogramma):
 
 def clustering(point_masked,curret_frame):
 
-   #print(curret_frame[1],curret_frame[2],curret_frame[3])
-    #print("Con punti > 1m " + str(len(point_masked)))
     df = pd.DataFrame(point_masked)
     df["XCar"] = float(curret_frame[1])
     df["YCar"] = float(curret_frame[2])
     df["ZCar"] = float(curret_frame[3])
     df["Altezza"] = (df.to_numpy()[:, 2]) - (df.to_numpy()[:, 5])
-    df = df[ df["Altezza"] < 1]  #i consider points not too high
-    df = df[df["Altezza"] > -2]
+    df = df[ df["Altezza"] < max_altezza_segnale]  #i consider points not too high
+    df = df[df["Altezza"] > min_altezza_segnale]
 
     #print("senza")
     #print(len(df.index))
@@ -197,7 +198,7 @@ def clustering(point_masked,curret_frame):
         pcd_new.points = o3d.utility.Vector3dVector(array)
         #o3d.visualization.draw_geometries([pcd_new])
 
-        if (min < 20): #i consider points not too far
+        if (min < min_distance): #i consider points not too far
             return pd.DataFrame(array)
         else:
             print("Segnale troppo lontano per essere affidabile")
@@ -225,8 +226,8 @@ def iterate_frames():
           tmp = str("X") +"",str("Y") +"",str("Z") +"",str("Name")+"",str("Confidence") +"",str("N frame")
           writer.writerow(tmp)
           #i  make this start from about 500
-          for i in signal_list[1:]:
-                frame_n = int(i[5]) #it was 5 before
+          for i in signal_list[5:]: #inizio dalla 5nta rilevazione
+                frame_n = int(i[5])
                 #frame_n = 518
                 if (frame_n < 999):
                     t = 0
@@ -290,7 +291,7 @@ def iterate_frames():
                     if(not math.isnan(float(x))):
                         print(tmp)
                         writer.writerow(tmp)
-               # break
+                break
 
     return points, res,IMG_FILE
 
@@ -300,11 +301,11 @@ if __name__ == "__main__":
    cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
    frame = cv2.imread(IMG_FILE)
     
-'''   for i in range(0, len(res), 1):
+   for i in range(0, len(res), 1):
        if points[i][1] < 0: #fatto con marzia per eliminare i punti nel cielo
            cv2.circle(frame, (int(res[i][0]), int(res[i][1])), 1, (0, 0, 255), -1)
             #print ("original 3D points: "+str(points[i])+" projected 2D points: ["+str(int(res[i][0]))+" , "+str(int(res[i][1]))+"]" )
 
    cv2.imshow("frame", frame)
-   cv2.waitKey(0)'''
+   cv2.waitKey(0)
 

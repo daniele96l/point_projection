@@ -9,7 +9,7 @@ real_h_mm = 900  # da prendere da un file che itera e trova il sengale corretto
 object_h_px = 0  # in imput dal file generato in output da YOLO
 f_m = 4.4
 
-with open("../point_projection/kaggle2.txt", "r") as myfile:
+with open("../point_projection/kaggle3.txt", "r") as myfile:
     data = myfile.read().splitlines()
 
 new_data = []
@@ -41,6 +41,7 @@ new_list5 = new_list4
 y = 0
 
 for i in new_list4:
+    print(i)
     frame = i[5].split("/")[4]
     num = frame.split("_")[2]
     # print(num)
