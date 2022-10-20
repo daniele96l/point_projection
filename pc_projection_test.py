@@ -19,10 +19,11 @@ from scipy.stats import zscore
 import scipy.stats as stats
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
-min_distance = 30 #meters
-min_size = 20 #pixel
+min_distance = 20 #meters
+min_size = 10 #pixel
 max_altezza_segnale = 1
 min_altezza_segnale = -2
+min_conf = 0.89
 
 def angle(v1, v2, acute):
 # v1 is your firsr vector
@@ -83,6 +84,7 @@ def find_signal_pos(res,points_las,n,curret_frame):
     position_gps = pd.DataFrame()
     no_outlier_mean = pd.DataFrame()
 
+
     risoluzione = [2048, 2448]
     # risoluzione = [2448,2048]
     for i in signal_list:  # invece di iterare su tutti i segnali io dovrei andare a prendre solo quelli nel mio fotogramma corrente
@@ -91,40 +93,44 @@ def find_signal_pos(res,points_las,n,curret_frame):
         W = float(i[2]) * risoluzione[0]
         H = float(i[3]) * risoluzione[1]
 
-
         frame_n = i[5]
         index = []
+        tmp = i[4][-4:]
+        N = float(tmp.replace(")", ""))
 
-        if(frame_n == n and W < min_size): #in pixel
-            print("Segnale troppo piccolo per essere affidabile")
+        #if(frame_n == n and W < min_size): #in pixel
+            #print(i)
+            #print("Segnale troppo piccolo per essere affidabile")
 
-        if (frame_n == n and W > min_size and H > min_size):  # itero per ogni frame per ogni cartello che non sia troppo piccolo
+        if (frame_n == n and W > min_size and H > min_size and N > min_conf):  # itero per ogni frame per ogni cartello che non sia troppo piccolo
             name = str(i[4])
+            #print(name)
             names.append(name)
             for j in res:
-                if (j[0] > Cx - W / 2 and j[0] < Cx + W / 2 and j[1] > Cy - H / 2 and j[1] < Cy + H / 2 and W > 20):  # vadoa vedere quali punti sono dentro al bounding box, segnali troppo piccolo W < 30 sono probabilmente falsi positivi
+                if (j[0] > Cx - W / 2 and j[0] < Cx + W / 2 and j[1] > Cy - H / 2 and j[1] < Cy + H / 2):  # vadoa vedere quali punti sono dentro al bounding box, segnali troppo piccolo W < 30 sono probabilmente falsi positivi
                     index.append(True)
-                    #print(True)
+
                 else:
                     index.append(False)
 
             miei_px = res[index]
             point_masked = points_las[index]
-            #print(point_masked)
 
             no_outlier = pd.DataFrame(point_masked)
 
             if (point_masked.size > 0):
                 no_outlier = clustering(point_masked, curret_frame)
-                no_outlier_mean = no_outlier_mean.append(pd.DataFrame(no_outlier.mean(axis=0)))
-                # no_outlier = remove_outlier(no_outlier, 2)
-                position_gps = no_outlier_mean
-            else:
-                print("Zero punti dentro il bounding box, imposisbile trovare la posizione")
+                #print(no_outlier)
                 no_outlier_mean = no_outlier_mean.append(pd.DataFrame(no_outlier.mean(axis=0)))
                 # no_outlier = remove_outlier(no_outlier, 2)
                 position_gps = no_outlier_mean
 
+            else:
+                #print(i)
+                print("Zero punti dentro il bounding box, imposisbile trovare la posizione")
+                no_outlier_mean = no_outlier_mean.append(pd.DataFrame(no_outlier.mean(axis=0)))
+                # no_outlier = remove_outlier(no_outlier, 2)
+                position_gps = no_outlier_mean
 
     return position_gps,names,n
 
@@ -164,11 +170,10 @@ def clustering(point_masked,curret_frame):
 
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(point_masked)
+        #o3d.utility.set_verbosity_level(0)
 
-        with o3d.utility.VerbosityContextManager(
-                o3d.utility.VerbosityLevel.Debug) as cm:
-            labels = np.array(
-                pcd.cluster_dbscan(eps=0.5, min_points=5, print_progress=False))
+        #with o3d.utility.VerbosityContextManager() as cm:
+        labels = np.array(pcd.cluster_dbscan(eps=0.5, min_points=5, print_progress=False))
 
         max_label = labels.max()
         #print(max_label)
@@ -202,6 +207,7 @@ def clustering(point_masked,curret_frame):
         if (min < min_distance): #i consider points not too far
             return pd.DataFrame(array)
         else:
+            #print(curret_frame)
             print("Segnale troppo lontano per essere affidabile")
             array[:, :] = np.NaN
             return pd.DataFrame(array)
@@ -223,13 +229,23 @@ def remove_outlier(df_in, col_name):
 def iterate_frames():
     to_write = []
     with open('dati_mappa.csv', 'w') as file:
-          writer = csv.writer(file)
-          tmp = str("X") +"",str("Y") +"",str("Z") +"",str("Name")+"",str("Confidence") +"",str("N frame")
-          writer.writerow(tmp)
-          #i  make this start from about 500
-          for i in signal_list[10:]: #inizio dalla 5nta rilevazione
+        writer = csv.writer(file)
+        tmp = str("X") +"",str("Y") +"",str("Z") +"",str("Name")+"",str("Confidence") +"",str("N frame")
+        writer.writerow(tmp)
+        starting = 328
+        index = starting
+        for i in signal_list[starting:]: #QUESTA LISTA PARTE DA 1
+            print("Sengale analizzato")
+            print(i)
+            print("Rilevamento N " + str(index))
+            index += 1
+            tmp = i[4][-4:]
+            N = float(tmp.replace(")", ""))
+
+            if (N > min_conf):  # in pixel
+
                 frame_n = int(i[5])
-                #frame_n = 518
+
                 if (frame_n < 999):
                     t = 0
                 if (frame_n >= 1000 and frame_n < 1499):
@@ -287,14 +303,22 @@ def iterate_frames():
                     name = str(name).replace("'", "")
                     confidence = name[-4:]
                     name = name[:-4]
+                    name = name.replace(")","")
                     tmp = str(x) +'',str(y) +"" ,str(z) +"",str(name)+"",str(confidence) +"",str(n)
 
                     if(not math.isnan(float(x))):
+                        print("Salvo il segnale")
                         print(tmp)
+
                         writer.writerow(tmp)
-                #break
+            else:
+                print("Confidence troppo piccola")
+            break
+            print("--------------------------")
+
 
     return points, res,IMG_FILE
+
 
 if __name__ == "__main__":
     

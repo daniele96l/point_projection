@@ -4,15 +4,8 @@ import utm
 import numpy as np
 import csv
 
-df = pd.read_csv('dati_mappa.csv').dropna(axis = 0, how = 'any').reset_index(drop=True)
+df = pd.read_csv('dati_mappa_test2.csv').dropna(axis = 0, how = 'any').reset_index(drop=True)
 
-'''df['Z'] = df['Z'].str.replace(']', '')
-df['Z'] = df['Z'].str.replace('[', '')
-df['X'] = df['X'].str.replace(']', '')
-df['X'] = df['X'].str.replace('[', '')
-df['Y'] = df['Y'].str.replace(']', '')
-df['Y'] = df['Y'].str.replace('[', '')'''
-#["Z","Y","Z"] = df["Z","Y","Z"].str.replace('[', '')
 
 totale = df
 print(df)
@@ -65,14 +58,19 @@ tutti[0] = tutti_2['proximity']
 tutti.drop(['Confidence'], axis = 1, inplace = True) #preparo i due array per essere mergiati eliminando (exclusive join)
 tutti = tutti.dropna(axis = 0, how ='any')
 
-triplicati = tutti.groupby([0, "Name"]).mean() #faccio la media dei miei segnali che sono duplicati
+
+tutti["Proximity"] = tutti["X"]+tutti["X"]
+tutti["Proximity"] = tutti["Proximity"].astype(int) #MAYBE MAYBE MAYBE
+triplicati = tutti.groupby(["Proximity", "Name"]).mean() #faccio la media dei miei segnali che sono duplicati
+
+#triplicati = tutti.groupby([0, "Name"]).mean() #faccio la media dei miei segnali che sono duplicati
 
 #---------
 
 df_converted = triplicati
 #df_converted = totale
 #----------
-
+#TODO, se lo stesso segnale (stesso nome) è in posizione "vicina" ma in fotogrammi diversi va mergiato
 df_unstacked = df_converted.index.get_level_values('Name')
 
 df_converted["Name"] = df_unstacked
@@ -86,9 +84,8 @@ with open('mappa_final.csv', 'w') as file:
         print(i)
         writer.writerow(i)
 
-df_converted['Name'] = df_converted.index
+df_converted['Name'] = df_converted.Name
 c = df_converted.index.get_level_values('Name')
-
 
 x_offset = 360000
 y_offset = 5100000
@@ -99,7 +96,38 @@ df_offset["Y"] = df_converted["Y"] - y_offset
 df_offset["z"] = df_converted["Z"]
 df_offset["N frame"] = df_converted["N frame"]
 
+df_offset["Proximity"] = df_offset["X"]+df_offset["X"]+df_offset["z"]
+df_offset["Proximity"] = df_offset["Proximity"].astype(int) #MAYBE MAYBE MAYBE
 
+df_offset2 = pd.DataFrame()
+df_offset3 = pd.DataFrame()
+
+for i in range(len(df_offset)-1):
+    before = df_offset.iloc[i]
+    after = df_offset.iloc[i+1]
+    before = pd.DataFrame(before)
+    after = pd.DataFrame(after)
+    before = before.droplevel(level=0, axis = 1)
+    after = after.droplevel(level=0, axis = 1)
+    distance = abs(before.loc["Proximity"]-after.loc["Proximity"])
+    if(before.columns == after.columns and int(distance) < 3):
+        print("X")
+    else:
+        df_offset2 = df_offset2.append(df_offset.iloc[i])
+        
+
+for i in range(len(df_offset2)-1):
+    before = df_offset2.iloc[i]
+    after = df_offset2.iloc[i+1]
+    before = pd.DataFrame(before)
+    after = pd.DataFrame(after)
+    before = before.droplevel(level=0, axis = 1)
+    after = after.droplevel(level=0, axis = 1)
+    distance = abs(before.loc["Proximity"]-after.loc["Proximity"])
+    if(before.columns == after.columns and int(distance) < 3):
+        print("x")
+    else:
+        df_offset3 = df_offset3.append(df_offset2.iloc[i])
 
 df_converted["X"],df_converted["Y"] = utm.to_latlon(df_converted["X"], df_converted["Y"], 33, 'T')
 
