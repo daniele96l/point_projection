@@ -18,13 +18,43 @@ import open3d as o3d
 from scipy.stats import zscore
 import scipy.stats as stats
 import warnings
-
+print("HOOO")
 warnings.simplefilter(action='ignore', category=FutureWarning)
 min_distance = 30  # meters
-min_size = 10  # pixel
+min_size = 20  # pixel
 max_altezza_segnale = 1
 min_altezza_segnale = -2
-min_conf = 0.89
+min_conf = 0.80
+
+rilevazione = 0
+big_cluster = 0
+far_small_cluster = 0
+empty_cluster = 0
+low_confidence = 0
+no_points_in_bb = 0
+valida = 0
+small_bb = 0
+values_nan = 0
+
+
+def start():
+    global big_cluster
+    global far_small_cluster
+    global empty_cluster
+    global low_confidence
+
+    points, res, IMG_FILE = iterate_frames()
+    cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
+    frame = cv2.imread(IMG_FILE)
+
+    '''for i in range(0, len(res), 1):
+        if points[i][1] < 0:  # fatto con marzia per eliminare i punti nel cielo
+            cv2.circle(frame, (int(res[i][0]), int(res[i][1])), 1, (0, 0, 255), -1)
+            # print ("original 3D points: "+str(points[i])+" projected 2D points: ["+str(int(res[i][0]))+" , "+str(int(res[i][1]))+"]" )
+
+    cv2.imshow("frame", frame)
+    cv2.waitKey(0)'''
+
 
 
 def angle(v1, v2, acute):
@@ -86,6 +116,8 @@ def find_signal_pos(res,points_las2,segnale,curret_frame):
     points_las sono i punti 3d
     '''
     global name
+    global no_points_in_bb
+    global small_bb
     names = []
     position_gps = pd.DataFrame()
     no_outlier_mean = pd.DataFrame()
@@ -104,13 +136,12 @@ def find_signal_pos(res,points_las2,segnale,curret_frame):
     # print(i)
     # print("Segnale troppo piccolo per essere affidabile")
 
-    if (W > min_size and H > min_size and N > min_conf):  # itero per ogni frame per ogni cartello che non sia troppo piccolo
+    if (W > min_size):  # itero per ogni frame per ogni cartello che non sia troppo piccolo
         name = str(i[4])
         # print(name)
         names.append(name)
         for j in res:
-            if (j[0] > Cx - W / 2 and j[0] < Cx + W / 2 and j[1] > Cy - H / 2 and j[
-                1] < Cy + H / 2):  # vadoa vedere quali punti sono dentro al bounding box, segnali troppo piccolo W < 30 sono probabilmente falsi positivi
+            if (j[0] > Cx - W / 2 and j[0] < Cx + W / 2 and j[1] > Cy - H / 2 and j[1] < Cy + H / 2):  # vadoa vedere quali punti sono dentro al bounding box, segnali troppo piccolo W < 30 sono probabilmente falsi positivi
                 index.append(True)
             else:
                 index.append(False)
@@ -133,6 +164,9 @@ def find_signal_pos(res,points_las2,segnale,curret_frame):
             no_outlier_mean = no_outlier_mean.append(pd.DataFrame(no_outlier.mean(axis=0)))
             # no_outlier = remove_outlier(no_outlier, 2)
             position_gps = no_outlier_mean
+            no_points_in_bb += 1
+    else:
+        small_bb +=1
 
     return position_gps, names, frame_n
 
@@ -158,6 +192,10 @@ def find_las(fotogramma):
 
 
 def clustering(point_masked, curret_frame):
+    global  far_small_cluster
+    global empty_cluster
+    global far_small_cluster
+    global big_cluster
     df = pd.DataFrame(point_masked)
     df["XCar"] = float(curret_frame[1])
     df["YCar"] = float(curret_frame[2])
@@ -195,9 +233,7 @@ def clustering(point_masked, curret_frame):
         array["ZCar"] = float(curret_frame[3])
         array_np = np.asarray(array)
 
-        array["distance"] = np.sqrt(
-            ((array_np[:, 0]) - (array_np[:, 4])) ** 2 + ((array_np[:, 1]) - (array_np[:, 5])) ** 2 + (
-                        (array_np[:, 2]) - (array_np[:, 6])) ** 2)
+        array["distance"] = np.sqrt(((array_np[:, 0]) - (array_np[:, 4])) ** 2 + ((array_np[:, 1]) - (array_np[:, 5])) ** 2 + ((array_np[:, 2]) - (array_np[:, 6])) ** 2)
 
         color_min = array[array["distance"] == array["distance"].min()]
 
@@ -222,17 +258,21 @@ def clustering(point_masked, curret_frame):
                 return pd.DataFrame(array)
             else:
                 array[:, :] = np.NaN
-                print("Posizione con bassa confidence")
-                print(diff)
+                #print("Posizione con bassa confidence")
+                big_cluster += 1
+                #print(diff)
                 return pd.DataFrame(array)
         else:
             # print(curret_frame)
+            far_small_cluster += 1
             print("Segnale troppo lontano per essere affidabile")
             array[:, :] = np.NaN
             return pd.DataFrame(array)
     else:
         array = np.asarray(point_masked)
         array[:, :] = np.NaN
+        print("Cluster does not have valid points")
+        empty_cluster +=1
         return pd.DataFrame(array)
 
 
@@ -252,14 +292,19 @@ def remove_outlier(array):
 
 
 def iterate_frames():
+    global low_confidence
+    global valida
+    global rilevazione
+    global values_nan
     to_write = []
-    with open('dati_mappa_test2.csv', 'w') as file:
+    with open('dati_mappa_matteo.csv', 'w') as file:
         writer = csv.writer(file)
         tmp = str("X") + "", str("Y") + "", str("Z") + "", str("Name") + "", str("Confidence") + "", str("N frame")
         writer.writerow(tmp)
-        starting = 300
+        starting = 1
         index = starting
         for i in signal_list[starting:]:  # QUESTA LISTA PARTE DA 1
+            rilevazione +=1
             print("Sengale analizzato")
             segnale = i
             print(i)
@@ -302,7 +347,7 @@ def iterate_frames():
                 cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
 
                 position_gps, names, n = find_signal_pos(res,points_las,segnale,curret_frame)
-
+                print(position_gps)
                 for i in range(int(len(position_gps) / 3)):
                     if ((len(position_gps) / 3) == 1):
                         x = position_gps.loc[0][0]
@@ -333,29 +378,33 @@ def iterate_frames():
 
                     if (not math.isnan(float(x))):
                         print("Salvo il segnale")
+                        valida += 1
                         print(tmp)
 
                         writer.writerow(tmp)
                     else:
                         print("Value of the signal are NaN")
+                        values_nan+=1
             else:
                 print("Confidence rilevazione bassa")
+                low_confidence+=1
             #break
+
+            print("Cluster troppo in alto/basso " + str(empty_cluster))
+            print("Cluster troppo lontana " + str(far_small_cluster))
+            print("Cluster troppo grande " + str(big_cluster))
+            print("Rilevazione con bassa confidence " + str(low_confidence))
+            print("Non ci sono punti dentro il BB " + str(no_points_in_bb))
+            print("Bounding box troppo piccola " + str(small_bb))
+            print("Rilevazione  " + str(valida))
+            print("--------------------------")
+            print("tot " + str(rilevazione ))
+            if(empty_cluster + far_small_cluster + big_cluster+low_confidence +valida+no_points_in_bb+small_bb == rilevazione):
+                print("Success")
+            else:
+                print(i)
             print("--------------------------")
 
     return points, res, IMG_FILE
 
-
-if __name__ == "__main__":
-
-    points, res, IMG_FILE = iterate_frames()
-    cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
-    frame = cv2.imread(IMG_FILE)
-
-    '''for i in range(0, len(res), 1):
-        if points[i][1] < 0:  # fatto con marzia per eliminare i punti nel cielo
-            cv2.circle(frame, (int(res[i][0]), int(res[i][1])), 1, (0, 0, 255), -1)
-            # print ("original 3D points: "+str(points[i])+" projected 2D points: ["+str(int(res[i][0]))+" , "+str(int(res[i][1]))+"]" )
-
-    cv2.imshow("frame", frame)
-    cv2.waitKey(0)'''
+start()

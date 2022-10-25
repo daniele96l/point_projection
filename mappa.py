@@ -4,7 +4,7 @@ import utm
 import numpy as np
 import csv
 
-df = pd.read_csv('dati_mappa_test2.csv').dropna(axis = 0, how = 'any').reset_index(drop=True)
+df = pd.read_csv('dati_mappa_matteo.csv').dropna(axis = 0, how = 'any').reset_index(drop=True)
 
 
 totale = df
@@ -70,7 +70,6 @@ triplicati = tutti.groupby(["Proximity", "Name"]).mean() #faccio la media dei mi
 df_converted = triplicati
 #df_converted = totale
 #----------
-#TODO, se lo stesso segnale (stesso nome) è in posizione "vicina" ma in fotogrammi diversi va mergiato
 df_unstacked = df_converted.index.get_level_values('Name')
 
 df_converted["Name"] = df_unstacked
@@ -129,18 +128,30 @@ for i in range(len(df_offset2)-1):
     else:
         df_offset3 = df_offset3.append(df_offset2.iloc[i])
 
-df_converted["X"],df_converted["Y"] = utm.to_latlon(df_converted["X"], df_converted["Y"], 33, 'T')
+df_final = pd.DataFrame()
+df_final["X"] = df_offset3["X"] + x_offset
+df_final["Y"] = df_offset3["Y"] + y_offset
+df_final["Name"] = df_final.index
 
+list = []
+for i in df_final["Name"]:
+    list.append(i[1])
 
-z = df_converted["Z"].fillna(0)
-z = np.where(z>200 , 200, z)
+df_final_converted = pd.DataFrame()
+
+df_final_converted["X"],df_final_converted["Y"] = utm.to_latlon(df_final["X"], df_final["Y"], 33, 'T')
+
+#c = df_final.index.get_level_values('Name')
+
+#z = df_converted["Z"].fillna(0)
+#z = np.where(z>200 , 200, z)
 #print(df['centroid_lon'])
 fig = px.scatter_mapbox(
-                        lon=df_converted['Y'],
-                        lat=df_converted['X'],
-                        color = c,
+                        lon=df_final_converted['Y'],
+                        lat=df_final_converted['X'],
+                        color = list,
                         zoom=15,
-                        size= z,
+                        #size= z,
                         width=1200,
                         height=900,
                         title='Map')
@@ -156,6 +167,9 @@ fig = px.scatter_mapbox(
 fig.update_layout(mapbox_style="open-street-map")
 fig.update_layout(margin={"r":0,"t":50,"l":0,"b":10})
 fig.show()
+
+
+    
 
 
     

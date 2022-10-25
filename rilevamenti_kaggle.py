@@ -54,27 +54,10 @@ sorted_list = sorted(new_list5, key=itemgetter(5))
 sorted_list2 = sorted_list
 # calculate the distance
 z = 0
-'''for i in sorted_list:
-    object_h_px = float(i[2])*image_h_px
-   # print(object_h_px)
-    distance = (f_m*real_h_mm*image_h_px)/(object_h_px*sensor_h_mm)/real_h_mm
-    print(distance)
-    sorted_list2[z][6] = distance
-    z+= 1
-camera_path = "../mappa3d/Ladybug0_1.txt"
-camera_data = pd.read_csv(camera_path, header=None, delimiter=r"\s+")
-camera_data["Signal"] = ""
-camera_data["Distances"] = ""
-#put inside the dataframe the distance and the name of the signal at the given frame
+'''
+detected = []
 for i in sorted_list2:
-    #print(camera_data["Signal"].iloc[int(i[5])])
-    camera_data["Signal"].iloc[int(i[5])] +=  str(i[4])
-    camera_data["Signal"].iloc[int(i[5])] += " "
-    camera_data["Distances"].iloc[int(i[5])] +=  str(i[6])
-    camera_data["Distances"].iloc[int(i[5])] +=  " "
-
-
-
-print(int(camera_data[0].any()) == 3)
-print(camera_data[0].item())
+    if(i[5] < 1000 and float(i[3]) > 0.0049462890625):
+        detected.append(i)
+        
 '''
